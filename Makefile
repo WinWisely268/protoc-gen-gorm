@@ -13,18 +13,14 @@ OSOPER     := $(shell uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/appl
 ARCHOPER   := $(shell uname -m )
 PROTOC_VER := 3.13.0
 
-BINARIES   := bin/protoc-${PROTOC_VER}
-
-build: ${BINARIES}
-
 export PATH := $(shell pwd)/bin:$(PATH)
 
 bin/protoc-${PROTOC_VER}.zip:
 	mkdir -p bin
 	curl -L -o bin/protoc-${PROTOC_VER}.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VER}/protoc-${PROTOC_VER}-${OS}-${ARCH}.zip
 
-bin/protoc:
-	unzip -o -d bin .protoc.zip
+bin/protoc: bin/protoc-${PROTOC_VER}.zip
+	unzip -o -d bin $^
 	mv bin/bin/protoc bin/protoc-${PROTOC_VER}
 	chmod +x bin/protoc-${PROTOC_VER}
 	ln -sf protoc-${PROTOC_VER} $@
@@ -35,12 +31,19 @@ SRCROOT_ON_HOST      := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SRCROOT_IN_CONTAINER := /go/src/$(PROJECT_ROOT)
 DOCKERPATH           := /go/src
 DOCKER_RUNNER        := docker run --rm
-DOCKER_RUNNER        += -v $(SRCROOT_ON_HOST):$(SRCROOT_IN_CONTAINER)
-DOCKER_GENERATOR     := infoblox/atlas-gentool:dev-gengorm
-GENERATOR            := $(DOCKER_RUNNER) $(DOCKER_GENERATOR)
+DOCKER_RUNNER        += -v $(SRCROOT_ON_HOST):$(SRCROOT_IN_CONTAINER) -w $(SRCROOT_IN_CONTAINER)
+DOCKER_GENERATOR     := infoblox/docker-protobuf:latest
+PROTOC_FLAGS         := -I. -Ivendor -Iexample \
+		-Iproto \
+		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
+		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src" \
+		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src"
 
-GENGORM_IMAGE      := $(IMAGE_REGISTRY)/atlas-gentool
-GENGORM_DOCKERFILE := $(DOCKERFILE_PATH)/Dockerfile
+GENTOOL_FLAGS         := -Ivendor -Iexample -Iproto \
+		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
+		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:/go" \
+		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:/go"
+GENERATOR            := $(DOCKER_RUNNER) $(DOCKER_GENERATOR) $(PROTOC_FLAGS)
 
 .PHONY: default
 default: vendor install
@@ -53,23 +56,39 @@ vendor:
 vendor-update:
 	@dep ensure
 
-build: bin/protoc options/gorm.pb.go
+protos: bin/protoc options/gorm.pb.go types/types.proto example/user/user.pb.go
 
-options/gorm.pb.go:
-	protoc -I. $(PROTOC_FLAGS) options/gorm.proto
+options/gorm.pb.go: options/gorm.proto
+	protoc $(PROTOC_FLAGS) $^
 
-.PHONY: types
-types:
-	protoc --go_out=$(SRCPATH) types/types.proto
+types/types.pb.go: types/types.proto
+	protoc $(PROTOC_FLAGS) $^
+
+example/user/user.pb.go: example/user/user.proto
+	protoc  $(PROTOC_FLAGS) $^
+
+example/postgres_arrays/postgres_arrays.**.go: example/postgres_arrays/postgres_arrays.proto
+	protoc $(PROTOC_FLAGS) $^
+
+example/feature_demo/demo_multi_file_service.**.go: example/feature_demo/demo_multi_file_service.proto
+	protoc $(PROTOC_FLAGS) $^
+
+build: $(shell find plugin/)
+	go build -o bin/protoc-gen-gorm
 
 .PHONY: install
 install:
 	go install
 
+options: options-proto
+	go build ./options
+
 .PHONY: example
-example: default
-	protoc -I. -I$(SRCPATH) -I./vendor -I./vendor/github.com/grpc-ecosystem/grpc-gateway \
-		--go_out="plugins=grpc:$(SRCPATH)" --gorm_out="engine=postgres,enums=string,gateway:$(SRCPATH)" \
+example:
+
+	protoc -I. $(PROTOC_FLAGS) \
+		example/feature_demo/demo_types.proto \
+		example/feature_demo/demo_multi_file_service.proto \
 		example/feature_demo/demo_multi_file.proto \
 		example/feature_demo/demo_types.proto \
 		example/feature_demo/demo_service.proto \
@@ -103,11 +122,6 @@ gentool-example: gentool
 			example/feature_demo/demo_types.proto \
 			example/feature_demo/demo_service.proto \
 			example/feature_demo/demo_multi_file_service.proto
-
-	@$(GENERATOR) \
-		--go_out="plugins=grpc:$(DOCKERPATH)" \
-		--gorm_out="$(DOCKERPATH)" \
-			example/user/user.proto
 
 .PHONY: gentool-test
 gentool-test: gentool-example run-tests
