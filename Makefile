@@ -7,6 +7,29 @@ DOCKERFILE_PATH := $(CURDIR)/docker
 IMAGE_REGISTRY ?= infoblox
 IMAGE_VERSION  ?= dev-gengorm
 
+OS         := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH       := $(shell uname -m )
+OSOPER     := $(shell uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/apple-darwin/' | sed 's/linux/linux-gnu/')
+ARCHOPER   := $(shell uname -m )
+PROTOC_VER := 3.13.0
+
+BINARIES   := bin/protoc-${PROTOC_VER}
+
+build: ${BINARIES}
+
+export PATH := $(shell pwd)/bin:$(PATH)
+
+bin/protoc-${PROTOC_VER}.zip:
+	mkdir -p bin
+	curl -L -o bin/protoc-${PROTOC_VER}.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VER}/protoc-${PROTOC_VER}-${OS}-${ARCH}.zip
+
+bin/protoc:
+	unzip -o -d bin .protoc.zip
+	mv bin/bin/protoc bin/protoc-${PROTOC_VER}
+	chmod +x bin/protoc-${PROTOC_VER}
+	ln -sf protoc-${PROTOC_VER} $@
+	touch $@
+
 # configuration for the protobuf gentool
 SRCROOT_ON_HOST      := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SRCROOT_IN_CONTAINER := /go/src/$(PROJECT_ROOT)
@@ -30,11 +53,10 @@ vendor:
 vendor-update:
 	@dep ensure
 
-.PHONY: options
-options:
-	protoc -I. -I$(SRCPATH) -I./vendor \
-		--gogo_out="Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor:$(SRCPATH)" \
-		options/gorm.proto
+build: bin/protoc options/gorm.pb.go
+
+options/gorm.pb.go:
+	protoc -I. $(PROTOC_FLAGS) options/gorm.proto
 
 .PHONY: types
 types:
