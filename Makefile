@@ -36,12 +36,12 @@ DOCKER_GENERATOR     := infoblox/docker-protobuf:latest
 PROTOC_FLAGS         := -I. -Ivendor \
 		-Iproto \
 		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
-		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src" \
-		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src"
+		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src" \
+		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(SRCPATH)"
 
 GENTOOL_FLAGS         := -Ivendor -Iexample -Iproto \
 		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
-		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:/go" \
+		--gorm_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options,engine=postgres,enums=string,gateway:/go" \
 		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:/go"
 GENERATOR            := $(DOCKER_RUNNER) $(DOCKER_GENERATOR) $(PROTOC_FLAGS)
 
@@ -56,7 +56,15 @@ vendor:
 vendor-update:
 	@dep ensure
 
-protos: options/gorm.pb.go types/types.proto example/user/user.pb.go example/feature_demo/demo_types.pb.gorm.go
+protos: options/gorm.pb.go types/types.proto \
+	example/postgres_arrays/postgres_arrays.pb.go \
+	example/user/user.pb.go \
+	example/feature_demo/demo_types.pb.go \
+	example/feature_demo/demo_service.pb.go \
+	example/feature_demo/demo_multi_file.pb.go \
+	example/feature_demo/demo_multi_file_service.pb.go
+
+# FIXME: match these with patterns
 
 options/gorm.pb.go: options/gorm.proto
 	protoc $(PROTOC_FLAGS) $^
@@ -67,16 +75,25 @@ types/types.pb.go: types/types.proto
 example/user/user.pb.go: example/user/user.proto
 	protoc  $(PROTOC_FLAGS) $^
 
-example/postgres_arrays/postgres_arrays.**.go: example/postgres_arrays/postgres_arrays.proto
+example/postgres_arrays/postgres_arrays.pb.go: example/postgres_arrays/postgres_arrays.proto
 	protoc $(PROTOC_FLAGS) $^
 
-example/feature_demo/demo_types.**.go: example/feature_demo/demo_types.proto
+example/feature_demo/demo_multi_file_service.pb.go: example/feature_demo/demo_multi_file_service.proto
 	protoc $(PROTOC_FLAGS) $^
 
-example/feature_demo/demo_multi_file_service.**.go: example/feature_demo/demo_multi_file_service.proto
+example/feature_demo/demo_multi_file.pb.go: example/feature_demo/demo_multi_file.proto
 	protoc $(PROTOC_FLAGS) $^
 
-build: $(shell find plugin/)
+example/feature_demo/demo_service.pb.go: example/feature_demo/demo_service.proto
+	protoc $(PROTOC_FLAGS) $^
+
+example/feature_demo/demo_types.pb.go: example/feature_demo/demo_types.proto
+	protoc $(PROTOC_FLAGS) $^
+
+build: bin/protoc-gen-gorm
+
+.PHONY: bin/protoc-gen-gorm
+bin/protoc-gen-gorm: $(shell find plugin/)
 	go build -o bin/protoc-gen-gorm
 
 .PHONY: install
