@@ -33,7 +33,7 @@ DOCKERPATH           := /go/src
 DOCKER_RUNNER        := docker run --rm
 DOCKER_RUNNER        += -v $(SRCROOT_ON_HOST):$(SRCROOT_IN_CONTAINER) -w $(SRCROOT_IN_CONTAINER)
 DOCKER_GENERATOR     := infoblox/docker-protobuf:latest
-PROTOC_FLAGS         := -I. -Ivendor -Iexample \
+PROTOC_FLAGS         := -I. -Ivendor \
 		-Iproto \
 		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
 		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src" \
@@ -56,7 +56,7 @@ vendor:
 vendor-update:
 	@dep ensure
 
-protos: bin/protoc options/gorm.pb.go types/types.proto example/user/user.pb.go
+protos: options/gorm.pb.go types/types.proto example/user/user.pb.go example/feature_demo/demo_types.pb.gorm.go
 
 options/gorm.pb.go: options/gorm.proto
 	protoc $(PROTOC_FLAGS) $^
@@ -68,6 +68,9 @@ example/user/user.pb.go: example/user/user.proto
 	protoc  $(PROTOC_FLAGS) $^
 
 example/postgres_arrays/postgres_arrays.**.go: example/postgres_arrays/postgres_arrays.proto
+	protoc $(PROTOC_FLAGS) $^
+
+example/feature_demo/demo_types.**.go: example/feature_demo/demo_types.proto
 	protoc $(PROTOC_FLAGS) $^
 
 example/feature_demo/demo_multi_file_service.**.go: example/feature_demo/demo_multi_file_service.proto
