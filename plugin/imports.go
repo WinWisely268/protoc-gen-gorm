@@ -12,7 +12,7 @@ import (
 
 // Imports that are added by default but unneeded in GORM code
 var unneededImports = []string{
-	"import proto \"google.golang.org/protobuf/proto\"\n",
+	"import proto \"github.com/golang.org/protobuf/proto\"\n",
 	"import _ \"github.com/infobloxopen/protoc-gen-gorm/options\"\n",
 	// if needed will be imported with an alias
 	"import _ \"github.com/infobloxopen/protoc-gen-gorm/types\"\n",

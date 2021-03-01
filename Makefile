@@ -37,7 +37,7 @@ PROTOC_FLAGS         := -I. -Ivendor \
 		-Iproto \
 		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
 		--go_out="Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src" \
-		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(SRCPATH)"
+		--gorm_out="engine=postgres,enums=string,gateway,Mgoogle/protobuf/descriptor.proto=github.com/golang/protobuf/protoc-gen-go/descriptor,Mprotoc-gen-openapiv2/options/annotations.proto=github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options:$(shell go env GOPATH)/src"
 
 GENTOOL_FLAGS         := -Ivendor -Iexample -Iproto \
 		-Ivendor/github.com/grpc-ecosystem/grpc-gateway/v2 \
@@ -92,6 +92,11 @@ example/feature_demo/demo_types.pb.go: example/feature_demo/demo_types.proto
 
 build: bin/protoc-gen-gorm
 
+test: bin/protoc protos
+	go test -v ./...
+	go build ./example/user
+	go build ./example/feature_demo
+
 .PHONY: bin/protoc-gen-gorm
 bin/protoc-gen-gorm: $(shell find plugin/)
 	go build -o bin/protoc-gen-gorm
@@ -117,12 +122,6 @@ example:
 	protoc -I. -I$(SRCPATH) -I./vendor -I./vendor -I./vendor/github.com/grpc-ecosystem/grpc-gateway \
 		--go_out="plugins=grpc:$(SRCPATH)" --gorm_out="$(SRCPATH)" \
 		example/user/user.proto
-
-.PHONY: run-tests
-run-tests:
-	go test -v ./...
-	go build ./example/user
-	go build ./example/feature_demo
 
 .PHONY: test
 test: example run-tests
