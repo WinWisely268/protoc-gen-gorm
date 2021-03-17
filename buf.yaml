@@ -1,0 +1,24 @@
+# https://docs.buf.build/lint-usage/
+version: v1beta1
+name: infoblox.com/infobloxopen/protoc-gen-gorm
+build:
+  roots:
+    - proto
+    - third_party/proto
+    - vendor
+lint:
+  use:
+    - DEFAULT
+  ignore:
+    - github.com/infobloxopen
+    - github.com/grpc-ecosystem
+    - protoc-gen-openapiv2
+    - google
+    - github.com/gogo
+  ignore_only:
+    PACKAGE_VERSION_SUFFIX:
+    - google/api/annotations.proto
+    - google/api/http.proto
+breaking:
+  use:
+    - FILE
