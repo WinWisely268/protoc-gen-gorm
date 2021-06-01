@@ -1,0 +1,11 @@
+version: v1beta1
+plugins:
+  - name: go
+    out: example
+    opt: paths=source_relative
+  - name: go-grpc
+    out: example
+    opt: paths=source_relative
+  - name: gorm
+    out: example
+    opt: engine=postgres,enums=string,gateway

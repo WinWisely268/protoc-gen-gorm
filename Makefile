@@ -13,6 +13,9 @@ build: $(BUF)
 
 generate: example/**/*.pb.go
 
+example/feature_demo/*.pb.go: example/feature_demo/*.proto
+	buf generate --template example/feature_demo/buf.gen.yaml --path example/feature_demo
+
 example/user/*.pb.go: example/user/*.proto
 	buf generate --template example/user/buf.gen.yaml --path example/user
 
