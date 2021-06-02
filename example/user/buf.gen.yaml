@@ -4,5 +4,5 @@ plugins:
     out: example
     opt: paths=source_relative
   - name: gorm
-    out: example
+    out: boom
     opt: paths=source_relative,enums=string,gateway
