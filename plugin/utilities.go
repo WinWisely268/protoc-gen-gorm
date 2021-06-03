@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
@@ -19,6 +20,7 @@ func (p *OrmPlugin) getMsgName(o generator.Object) string {
 // retrieves the GormMessageOptions from a message
 func getMessageOptions(message *generator.Descriptor) *gorm.GormMessageOptions {
 	if message.Options == nil {
+		log.Println("nil", *message.Name)
 		return nil
 	}
 	v, err := proto.GetExtension(message.Options, gorm.E_Opts)
@@ -29,6 +31,7 @@ func getMessageOptions(message *generator.Descriptor) *gorm.GormMessageOptions {
 	if !ok {
 		return nil
 	}
+	log.Printf("msg: %#v\nopts: %#v\n", message, opts)
 	return opts
 }
 

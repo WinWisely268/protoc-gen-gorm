@@ -126,6 +126,7 @@ func (p *OrmPlugin) Init(g *generator.Generator) {
 	} else {
 		p.dbEngine = ENGINE_UNSET
 	}
+
 	if strings.EqualFold(g.Param["enums"], "string") {
 		p.stringEnums = true
 	}
@@ -142,6 +143,9 @@ func (p *OrmPlugin) Init(g *generator.Generator) {
 func (p *OrmPlugin) Generate(file *generator.FileDescriptor) {
 	// On the first file, go through and fill out all the objects and associations
 	// so that cross-file assocations within the same package work
+
+	log.Printf("%#v\n", p.AllFiles().File)
+
 	if p.ormableTypes == nil {
 		p.ormableTypes = make(map[string]*OrmableType)
 		for _, fileProto := range p.AllFiles().GetFile() {
@@ -188,6 +192,7 @@ func (p *OrmPlugin) Generate(file *generator.FileDescriptor) {
 	}
 	// Return to the file at hand and then generate anything needed
 	p.setFile(*file.Name, *file.Package)
+
 	empty := true
 	for _, msg := range file.Messages() {
 		typeName := p.getMsgName(msg)
@@ -408,6 +413,7 @@ func (p *OrmPlugin) isOrmable(typeName string) bool {
 
 func (p *OrmPlugin) getOrmable(typeName string) *OrmableType {
 	parts := strings.Split(typeName, ".")
+	log.Println("parts", parts)
 	if ormable, ok := p.ormableTypes[strings.TrimSuffix(strings.Trim(parts[len(parts)-1], "[]*"), "ORM")]; ok {
 		return ormable
 	} else {

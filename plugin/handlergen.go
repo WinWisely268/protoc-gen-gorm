@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
@@ -10,25 +11,27 @@ import (
 
 func (p *OrmPlugin) generateDefaultHandlers(file *generator.FileDescriptor) {
 	for _, message := range file.Messages() {
-		if getMessageOptions(message).GetOrmable() {
-			//context package is a global import because it used in function parameters
-			p.UsingGoImports(stdCtxImport)
-
-			p.generateCreateHandler(message)
-			// FIXME: Temporary fix for Ormable objects that have no ID field but
-			// have pk.
-			if p.hasPrimaryKey(p.getOrmable(p.TypeName(message))) && p.hasIDField(message) {
-				p.generateReadHandler(message)
-				p.generateDeleteHandler(message)
-				p.generateDeleteSetHandler(message)
-				p.generateStrictUpdateHandler(message)
-				p.generatePatchHandler(message)
-				p.generatePatchSetHandler(message)
-			}
-
-			p.generateApplyFieldMask(message)
-			p.generateListHandler(message)
+		if !getMessageOptions(message).GetOrmable() {
+			continue
 		}
+		log.Fatalf("this file worked: %#v\n", message)
+		//context package is a global import because it used in function parameters
+		p.UsingGoImports(stdCtxImport)
+
+		p.generateCreateHandler(message)
+		// FIXME: Temporary fix for Ormable objects that have no ID field but
+		// have pk.
+		if p.hasPrimaryKey(p.getOrmable(p.TypeName(message))) && p.hasIDField(message) {
+			p.generateReadHandler(message)
+			p.generateDeleteHandler(message)
+			p.generateDeleteSetHandler(message)
+			p.generateStrictUpdateHandler(message)
+			p.generatePatchHandler(message)
+			p.generatePatchSetHandler(message)
+		}
+
+		p.generateApplyFieldMask(message)
+		p.generateListHandler(message)
 	}
 }
 
